@@ -21,7 +21,7 @@ This README is written for frontend integration — every endpoint includes the 
 
 ```
 com.example.cartagetape
-├── config/          # Security & Swagger configuration
+├── config/          # Security, CORS, Swagger config, default admin seeder
 ├── controller/       # REST endpoints
 ├── dto/               # Request/response payloads
 ├── entity/            # MongoDB documents
@@ -40,7 +40,13 @@ com.example.cartagetape
 - MongoDB running locally or a connection string (MongoDB Atlas works too)
 
 ### 2. Configuration
-Add to `src/main/resources/application.properties`:
+
+This repo ships an `application.properties.example` instead of a real `application.properties` — the real file is gitignored so secrets never get committed.
+
+Copy it and fill in your own values:
+```bash
+cp src/main/resources/application.properties.example src/main/resources/application.properties
+```
 
 ```properties
 spring.data.mongodb.uri=mongodb://localhost:27017/cartagetape
@@ -49,9 +55,13 @@ jwt.secret=replace-with-a-long-random-base64-secret-key-min-256-bits
 jwt.expiration=86400000
 
 server.port=8080
+
+admin.default.name=System Admin
+admin.default.email=admin@ongc.com
+admin.default.password=Admin@123
 ```
 
-`jwt.expiration` is in milliseconds (`86400000` = 24 hours).
+`jwt.expiration` is in milliseconds (`86400000` = 24 hours). The `admin.default.*` values are used once on startup — see [Default Admin Account](#default-admin-account) below.
 
 ### 3. Run
 ```bash
@@ -67,17 +77,37 @@ http://localhost:8080/swagger-ui.html
 ```
 Use the **Authorize** button to paste in your JWT (no need to type "Bearer", just the token) and test endpoints interactively.
 
+### 5. CORS (for frontend integration)
+The API allows cross-origin requests from `http://localhost:3000` and `http://localhost:5173` by default (see `SecurityConfig.corsConfigurationSource()`). If your frontend runs on a different port, add it to the `setAllowedOrigins(...)` list in `SecurityConfig.java`.
+
+---
+
+## Default Admin Account
+
+On first startup, `AdminSeeder` automatically creates an admin user using the `admin.default.*` values in `application.properties` — **if no user with that email already exists**. No manual database editing required.
+
+Default login (unless you changed it):
+```json
+{
+  "email": "admin@ongc.com",
+  "password": "Admin@123"
+}
+```
+Change the password in your local `application.properties` before deploying or sharing this anywhere public.
+
+Anyone registering via `/api/auth/register` is always created as `EMPLOYEE` — there's no public way to self-register as `ADMIN`, which is intentional.
+
 ---
 
 ## Authentication
 
-All endpoints except `/api/auth/**` and Swagger paths require a JWT in the request header:
+All endpoints except `/api/auth/register`, `/api/auth/login`, and Swagger paths require a JWT in the request header:
 
 ```
 Authorization: Bearer <token>
 ```
 
-There are two roles: `ADMIN` and `EMPLOYEE`. **Registration always creates an `EMPLOYEE`.** There is currently no public endpoint to create an `ADMIN` — see [Creating an Admin User](#creating-an-admin-user) below.
+There are two roles: `ADMIN` and `EMPLOYEE`.
 
 ---
 
@@ -126,6 +156,21 @@ Response `200 OK`: same shape as register.
 
 Errors:
 - `401` invalid email or password
+
+#### Get current user
+```
+GET /api/auth/me
+Authorization: Bearer <token>
+```
+Response `200 OK`:
+```json
+{
+  "name": "Aryan Sharma",
+  "email": "aryan@ongc.com",
+  "role": "EMPLOYEE"
+}
+```
+Use this on app load to identify the logged-in user and their role (e.g. to conditionally show the delete button) without decoding the JWT on the client.
 
 ---
 
@@ -181,7 +226,7 @@ Errors:
 - `404` if tape id doesn't exist
 - `409` if changing to a `sequenceNumber` that already exists on another tape
 
-#### Get all tapes (paginated) — `ADMIN` or `EMPLOYEE`
+#### Get all tapes (paginated, filterable, searchable) — `ADMIN` or `EMPLOYEE`
 ```
 GET /api/tapes?page=0&size=10&sortBy=createdAt&direction=desc
 Authorization: Bearer <token>
@@ -193,11 +238,13 @@ Query params (all optional):
 | `size` | `10` | page size |
 | `sortBy` | `createdAt` | any field on the tape, e.g. `sequenceNumber`, `location` |
 | `direction` | `desc` | `asc` or `desc` |
-| `location` | — | filter by location (partial, case-insensitive) |
+| `location` | — | filter by location only (partial, case-insensitive) |
+| `search` | — | global search across `sequenceNumber`, `location`, and `remarks` — takes priority over `location` if both are sent |
 
-Example with filter:
+Examples:
 ```
 GET /api/tapes?location=Rack&page=0&size=5
+GET /api/tapes?search=CT-001&page=0&size=10
 ```
 
 Response `200 OK`:
@@ -278,33 +325,31 @@ Validation errors (e.g. missing required field) look slightly different, with a 
 |---|---|---|
 | `POST /api/auth/register` | ✅ public | ✅ public |
 | `POST /api/auth/login` | ✅ public | ✅ public |
+| `GET /api/auth/me` | ✅ | ✅ |
 | `POST /api/tapes` | ✅ | ✅ |
 | `PUT /api/tapes/{id}` | ✅ | ✅ |
-| `GET /api/tapes` | ✅ | ✅ |
+| `GET /api/tapes` (incl. search/filter) | ✅ | ✅ |
 | `GET /api/tapes/{id}` | ✅ | ✅ |
 | `GET /api/tapes/sequence/{sequenceNumber}` | ✅ | ✅ |
 | `DELETE /api/tapes/admin/{id}` | ❌ (403) | ✅ |
 
 ---
 
-## Creating an Admin User
+## Testing with Postman
 
-Since `/api/auth/register` always assigns `EMPLOYEE`, promote a user to `ADMIN` manually in MongoDB after registering normally:
+A ready-to-import collection is included: `cartage-tape-inventory.postman_collection.json`.
 
-```javascript
-db.users.updateOne(
-  { email: "admin@ongc.com" },
-  { $set: { role: "ADMIN" } }
-)
-```
-
-Then log in again with that account to get a fresh token with `ADMIN` privileges — JWT roles are baked in at login time via the user's current role in the database.
+1. Import it into Postman.
+2. It includes a collection variable `baseUrl` (defaults to `http://localhost:8080`) and `token` (auto-filled).
+3. Run **Auth → Register** or **Auth → Login** first — a test script automatically saves the returned JWT into the `token` variable, so every subsequent request picks it up via `Authorization: Bearer {{token}}`.
+4. For `Update Tape`, `Get Tape By ID`, and `Delete Tape`, replace `REPLACE_WITH_TAPE_ID` in the URL with a real id from a create/list response.
 
 ---
 
 ## Notes for Frontend Integration
 
 - Tokens are stateless JWTs — store in memory or `httpOnly` cookie (avoid `localStorage` for production-grade security, though fine for a demo/internship project).
+- Call `GET /api/auth/me` right after login (or on app load if a token is already stored) to get the current user's name/email/role — use `role` to conditionally show admin-only UI like the delete button.
 - `createdBy`/`updatedBy` are always names, never emails or IDs — display them as-is.
-- `role` comes back from `/api/auth/login` and `/api/auth/register` — use it client-side to conditionally show the delete button (`ADMIN` only), though the backend enforces this regardless.
 - Dates (`createdAt`, `updatedAt`) are ISO-8601 `LocalDateTime` strings with no timezone offset — treat as local server time.
+- Use the `search` query param for a single search box (matches sequence number, location, or remarks); use `location` only if you need a dedicated location filter separate from general search.
