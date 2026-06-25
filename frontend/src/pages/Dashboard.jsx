@@ -4,11 +4,15 @@ import TapeTable from "../components/TapeTable";
 import SearchBar from "../components/SearchBar";
 import { createTape } from "../api/tapeApi";
 import AddTapeModal from "../components/AddTapeModal";
+import { updateTape } from "../api/tapeApi";
+import EditTapeModal from "../components/EditTapeModal";
 
 const Dashboard = () => {
   const [tapes, setTapes] = useState([]);
   const [search, setSearch] = useState("");
   const [openModal, setOpenModal] =  useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+const [selectedTape, setSelectedTape] = useState(null);
 
   
   const fetchTapes = async (query = "") => {
@@ -44,7 +48,19 @@ const Dashboard = () => {
     console.log(err);
   }
 };
+    const handleUpdateTape = async (
+  id,
+  tapeData
+) => {
+  try {
+    await updateTape(id, tapeData);
 
+    setEditOpen(false);
+    fetchTapes();
+  } catch (err) {
+    console.log(err);
+  }
+};
 
     
   return (
@@ -67,12 +83,24 @@ const Dashboard = () => {
 </button>
 </div>
 
-        <TapeTable tapes={tapes} />
+        <TapeTable
+  tapes={tapes}
+  onEdit={(tape) => {
+    setSelectedTape(tape);
+    setEditOpen(true);
+  }}
+/>
       </div>
       <AddTapeModal
   isOpen={openModal}
   onClose={() => setOpenModal(false)}
   onSubmit={handleCreateTape}
+/>
+<EditTapeModal
+  isOpen={editOpen}
+  onClose={() => setEditOpen(false)}
+  onSubmit={handleUpdateTape}
+  tape={selectedTape}
 />
     </div>
   );
