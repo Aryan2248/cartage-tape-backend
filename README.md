@@ -368,6 +368,119 @@ A ready-to-import collection is included: `cartage-tape-inventory.postman_collec
 
 ---
 
+## Frontend Implementation
+
+The frontend of the Cartage Tape Inventory Management System was developed using **React.js**, **Tailwind CSS**, and **Axios** to provide a modern, responsive, and role-based user experience.
+
+### Frontend Features
+
+#### Authentication & Authorization
+
+* JWT-based authentication
+* Protected routes for authenticated users
+* Automatic user session restoration
+* Role-based UI rendering (ADMIN / EMPLOYEE)
+* Secure logout functionality
+
+#### Inventory Management
+
+* Create Tape Records
+* View Tape Inventory
+* Edit Existing Tapes
+* Delete Tapes (ADMIN only)
+* Real-time inventory updates after CRUD operations
+
+#### Employee Management
+
+* Admin-only employee creation interface
+* Role-restricted access to user management features
+* Employee login and inventory access
+
+#### Search & Pagination
+
+* Global search across tape records
+* Debounced search requests
+* Server-side pagination
+* Dynamic page navigation controls
+
+#### Audit Tracking
+
+* Created By
+* Created At
+* Updated By
+* Updated At
+
+#### User Interface
+
+* Responsive dashboard layout
+* Modern Tailwind CSS design
+* Navigation bar with user information
+* Role badges for user identification
+* Loading states
+* Empty-state handling
+* Modal-based forms for tape and employee management
+
+### Frontend Technology Stack
+
+* React.js
+* React Router DOM
+* Axios
+* Tailwind CSS
+* Context API
+* Vite
+
+### Frontend Architecture
+
+frontend/
+├── api/
+├── components/
+│   ├── Navbar
+│   ├── SearchBar
+│   ├── TapeTable
+│   ├── AddTapeModal
+│   ├── EditTapeModal
+│   └── AddEmployeeModal
+|   |__ DeleteConfirmationModal
+├── context/
+│   └── AuthContext
+├── pages/
+│   ├── Login
+│   └── Dashboard
+├── routes/
+│   └── ProtectedRoute
+└── App.jsx
+
+### User Roles
+
+#### ADMIN
+
+* Create employees
+* Create tapes
+* Update tapes
+* Delete tapes
+* Search inventory
+* View audit information
+
+#### EMPLOYEE
+
+* Login
+* Create tapes
+* Update tapes
+* Search inventory
+* View audit information
+* Cannot delete tapes
+* Cannot create users
+
+### Frontend Workflow
+
+1. User logs in.
+2. JWT token is issued by the backend.
+3. Frontend retrieves current user details using `/api/auth/me`.
+4. Dashboard loads inventory records.
+5. Users perform inventory operations according to assigned roles.
+6. Audit information is automatically displayed for every record.
+
+
 ## Notes for Frontend Integration
 
 - There is **no sign-up page** in this system. Only an `ADMIN` can create new accounts via `/api/auth/register`, so the frontend needs a "Create User" form available only inside an admin view — not a public registration form.
