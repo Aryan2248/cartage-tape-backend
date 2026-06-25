@@ -8,3 +8,11 @@ export const registerUser = (data) =>
 
 export const getCurrentUser = () =>
   api.get("/api/auth/me");
+
+export const registerEmployee = (
+  employeeData
+) =>
+  api.post(
+    "/api/auth/register",
+    employeeData
+  );
