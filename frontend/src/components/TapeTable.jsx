@@ -1,4 +1,4 @@
-const TapeTable = ({ tapes, onEdit, onDelete, role}) => {
+const TapeTable = ({ tapes, onEdit, onDelete, role, page, totalPages, setPage }) => {
   return (
     <div className="bg-white rounded-xl shadow overflow-hidden">
       <table className="w-full">
@@ -39,15 +39,17 @@ const TapeTable = ({ tapes, onEdit, onDelete, role}) => {
               </td>
 
               <td className="p-4">
-                {tape.createdBy}
-              </td>
-              <td className="p-4">
-  {tape.updatedBy || "-"}
+  {tape.createdBy}
 </td>
+
 <td className="p-4">
   {tape.createdAt
     ? new Date(tape.createdAt).toLocaleString()
     : "-"}
+</td>
+
+<td className="p-4">
+  {tape.updatedBy || "-"}
 </td>
 
 <td className="p-4">
@@ -78,6 +80,31 @@ const TapeTable = ({ tapes, onEdit, onDelete, role}) => {
           ))}
         </tbody>
       </table>
+      <div className="flex justify-center items-center gap-4 mt-6">
+  <button
+    disabled={page === 0}
+    onClick={() =>
+      setPage((prev) => prev - 1)
+    }
+    className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+  >
+    Previous
+  </button>
+
+  <span className="font-medium">
+    Page {page + 1} of {totalPages || 1}
+  </span>
+
+  <button
+    disabled={page + 1 >= totalPages}
+    onClick={() =>
+      setPage((prev) => prev + 1)
+    }
+    className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+  >
+    Next
+  </button>
+</div>
     </div>
   );
 };

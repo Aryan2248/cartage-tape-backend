@@ -16,29 +16,45 @@ const Dashboard = () => {
   const [openModal, setOpenModal] =  useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [selectedTape, setSelectedTape] = useState(null);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(true);
 
 
   const { user } = useAuth();
   
-  const fetchTapes = async (query = "") => {
-      try {
-          const res = query
-          ? await searchTapes(query)
-          : await getAllTapes();
-          
-          setTapes(res.data.content);
-        } catch (err) {
-            console.log(err);
-        }
-    };
+  const fetchTapes = async (
+  query = "",
+  currentPage = page
+) => {
+  try {
+    setLoading(true);
+
+    const res = query
+      ? await searchTapes(
+          query,
+          currentPage
+        )
+      : await getAllTapes(currentPage);
+
+    setTapes(res.data.content);
+    setTotalPages(res.data.totalPages);
+  } catch (err) {
+    console.log(err);
+  } finally {
+    setLoading(false);
+  }
+};
     
     useEffect(() => {
-    const timeout = setTimeout(() => {
-      fetchTapes(search);
-    }, 500);
-  
-    return () => clearTimeout(timeout);
-  }, [search]);
+  const timeout = setTimeout(() => {
+    fetchTapes(search, page);
+  }, 500);
+
+  return () => clearTimeout(timeout);
+}, 
+[search, page]);
+
 
   const handleCreateTape = async (
   tapeData
@@ -80,8 +96,10 @@ const Dashboard = () => {
     console.log(err);
   }
 };
+
     
   return (
+    
     <div className="min-h-screen bg-slate-100 p-8">
       <div className="max-w-7xl mx-auto">
         <Navbar />
@@ -97,7 +115,10 @@ const Dashboard = () => {
         <div className="flex justify-between mb-6">
   <SearchBar
     value={search}
-    onChange={setSearch}
+    onChange={(value) => {
+  setSearch(value);
+  setPage(0);
+}}
   />
 
   <button
@@ -120,14 +141,17 @@ const Dashboard = () => {
   </div>
 ) : (
   <TapeTable
-    tapes={tapes}
-    role={user?.role}
-    onEdit={(tape) => {
-      setSelectedTape(tape);
-      setEditOpen(true);
-    }}
-    onDelete={handleDeleteTape}
-  />
+  tapes={tapes}
+  role={user?.role}
+  page={page}
+  totalPages={totalPages}
+  setPage={setPage}
+  onEdit={(tape) => {
+    setSelectedTape(tape);
+    setEditOpen(true);
+  }}
+  onDelete={handleDeleteTape}
+/>
 )}
 
       </div>
