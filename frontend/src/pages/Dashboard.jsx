@@ -6,14 +6,18 @@ import { createTape } from "../api/tapeApi";
 import AddTapeModal from "../components/AddTapeModal";
 import { updateTape } from "../api/tapeApi";
 import EditTapeModal from "../components/EditTapeModal";
+import { deleteTape } from "../api/tapeApi";
+import { useAuth } from "../context/AuthContext";
 
 const Dashboard = () => {
   const [tapes, setTapes] = useState([]);
   const [search, setSearch] = useState("");
   const [openModal, setOpenModal] =  useState(false);
   const [editOpen, setEditOpen] = useState(false);
-const [selectedTape, setSelectedTape] = useState(null);
+  const [selectedTape, setSelectedTape] = useState(null);
 
+
+  const { user } = useAuth();
   
   const fetchTapes = async (query = "") => {
       try {
@@ -61,7 +65,20 @@ const [selectedTape, setSelectedTape] = useState(null);
     console.log(err);
   }
 };
+    const handleDeleteTape = async (id) => {
+  const confirmDelete = window.confirm(
+    "Are you sure you want to delete this tape?"
+  );
 
+  if (!confirmDelete) return;
+
+  try {
+    await deleteTape(id);
+    fetchTapes();
+  } catch (err) {
+    console.log(err);
+  }
+};
     
   return (
     <div className="min-h-screen bg-slate-100 p-8">
@@ -85,11 +102,14 @@ const [selectedTape, setSelectedTape] = useState(null);
 
         <TapeTable
   tapes={tapes}
+  role={user?.role}
   onEdit={(tape) => {
     setSelectedTape(tape);
     setEditOpen(true);
   }}
+  onDelete={handleDeleteTape}
 />
+
       </div>
       <AddTapeModal
   isOpen={openModal}

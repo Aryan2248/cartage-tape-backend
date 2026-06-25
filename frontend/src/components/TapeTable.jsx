@@ -1,4 +1,4 @@
-const TapeTable = ({ tapes, onEdit}) => {
+const TapeTable = ({ tapes, onEdit, onDelete, role}) => {
   return (
     <div className="bg-white rounded-xl shadow overflow-hidden">
       <table className="w-full">
@@ -43,12 +43,23 @@ const TapeTable = ({ tapes, onEdit}) => {
   {tape.updatedBy || "-"}
 </td>
               <td className="p-4">
-  <button
-    onClick={() => onEdit(tape)}
-    className="text-blue-600"
-  >
-    Edit
-  </button>
+  <div className="flex gap-4">
+    <button
+      onClick={() => onEdit(tape)}
+      className="text-blue-600 font-medium"
+    >
+      Edit
+    </button>
+
+    {role === "ADMIN" && (
+      <button
+        onClick={() => onDelete(tape.id)}
+        className="text-red-600 font-medium"
+      >
+        Delete
+      </button>
+    )}
+  </div>
 </td>
             </tr>
           ))}
