@@ -8,6 +8,7 @@ import com.example.cartagetape.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -17,8 +18,9 @@ public class AuthController {
 
     private final AuthService authService;
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(
+    public ResponseEntity<UserResponse> register(
             @Valid @RequestBody RegisterRequest request) {
 
         return ResponseEntity.ok(
