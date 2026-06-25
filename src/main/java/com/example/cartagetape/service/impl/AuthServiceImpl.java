@@ -25,11 +25,13 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
 
     @Override
-    public AuthResponse register(RegisterRequest request) {
+    public UserResponse register(RegisterRequest request) {
 
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
+
+        Role role = request.getRole() != null ? request.getRole() : Role.EMPLOYEE;
 
         User user = User.builder()
                 .name(request.getName())
@@ -39,16 +41,13 @@ public class AuthServiceImpl implements AuthService {
                                 request.getPassword()
                         )
                 )
-                .role(Role.EMPLOYEE)
+                .role(role)
                 .build();
 
         userRepository.save(user);
 
-        String token =
-                jwtService.generateToken(user.getEmail());
-
-        return AuthResponse.builder()
-                .token(token)
+        return UserResponse.builder()
+                .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole().name())
                 .build();

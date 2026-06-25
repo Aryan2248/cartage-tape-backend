@@ -95,13 +95,15 @@ Default login (unless you changed it):
 ```
 Change the password in your local `application.properties` before deploying or sharing this anywhere public.
 
-Anyone registering via `/api/auth/register` is always created as `EMPLOYEE` — there's no public way to self-register as `ADMIN`, which is intentional.
+This default admin is also the **only way to get started**, since there is no public registration anymore — see below.
 
 ---
 
 ## Authentication
 
-All endpoints except `/api/auth/register`, `/api/auth/login`, and Swagger paths require a JWT in the request header:
+There is **no public registration**. Account creation is admin-controlled.
+
+All endpoints except `/api/auth/login` and Swagger paths require a JWT in the request header:
 
 ```
 Authorization: Bearer <token>
@@ -109,35 +111,47 @@ Authorization: Bearer <token>
 
 There are two roles: `ADMIN` and `EMPLOYEE`.
 
+| Endpoint | Access |
+|---|---|
+| `POST /api/auth/login` | Public — anyone with valid credentials |
+| `POST /api/auth/register` | **ADMIN only** — used to create new employee or admin accounts |
+
+This means: a new employee never signs themselves up. An admin creates the account first (via `/api/auth/register`), and the employee then logs in with the credentials the admin set up.
+
 ---
 
 ## API Reference
 
 ### Auth
 
-#### Register
+#### Register a new user — `ADMIN` only
 ```
 POST /api/auth/register
 Content-Type: application/json
+Authorization: Bearer <adminToken>
 ```
 Body:
 ```json
 {
   "name": "Aryan Sharma",
   "email": "aryan@ongc.com",
-  "password": "password123"
+  "password": "password123",
+  "role": "EMPLOYEE"
 }
 ```
-Response `200 OK`:
+`role` is optional — if omitted, it defaults to `EMPLOYEE`. Set it to `"ADMIN"` to create another admin account.
+
+Response `200 OK` — **no token is returned here**, since the admin is creating an account for someone else, not logging in as them:
 ```json
 {
-  "token": "eyJhbGciOiJIUzI1NiJ9...",
+  "name": "Aryan Sharma",
   "email": "aryan@ongc.com",
   "role": "EMPLOYEE"
 }
 ```
 Errors:
 - `400` if email/password/name missing or invalid email format
+- `403` if called without an `ADMIN` token (or no token at all)
 - `409` if email already registered
 
 #### Login
@@ -152,8 +166,14 @@ Body:
   "password": "password123"
 }
 ```
-Response `200 OK`: same shape as register.
-
+Response `200 OK`:
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiJ9...",
+  "email": "aryan@ongc.com",
+  "role": "EMPLOYEE"
+}
+```
 Errors:
 - `401` invalid email or password
 
@@ -170,7 +190,7 @@ Response `200 OK`:
   "role": "EMPLOYEE"
 }
 ```
-Use this on app load to identify the logged-in user and their role (e.g. to conditionally show the delete button) without decoding the JWT on the client.
+Use this on app load to identify the logged-in user and their role (e.g. to conditionally show the admin panel or delete button) without decoding the JWT on the client.
 
 ---
 
@@ -321,17 +341,17 @@ Validation errors (e.g. missing required field) look slightly different, with a 
 
 ## Roles & Access Summary
 
-| Endpoint | EMPLOYEE | ADMIN |
-|---|---|---|
-| `POST /api/auth/register` | ✅ public | ✅ public |
-| `POST /api/auth/login` | ✅ public | ✅ public |
-| `GET /api/auth/me` | ✅ | ✅ |
-| `POST /api/tapes` | ✅ | ✅ |
-| `PUT /api/tapes/{id}` | ✅ | ✅ |
-| `GET /api/tapes` (incl. search/filter) | ✅ | ✅ |
-| `GET /api/tapes/{id}` | ✅ | ✅ |
-| `GET /api/tapes/sequence/{sequenceNumber}` | ✅ | ✅ |
-| `DELETE /api/tapes/admin/{id}` | ❌ (403) | ✅ |
+| Endpoint | Public | EMPLOYEE | ADMIN |
+|---|---|---|---|
+| `POST /api/auth/login` | ✅ | ✅ | ✅ |
+| `POST /api/auth/register` | ❌ | ❌ (403) | ✅ |
+| `GET /api/auth/me` | ❌ | ✅ | ✅ |
+| `POST /api/tapes` | ❌ | ✅ | ✅ |
+| `PUT /api/tapes/{id}` | ❌ | ✅ | ✅ |
+| `GET /api/tapes` (incl. search/filter) | ❌ | ✅ | ✅ |
+| `GET /api/tapes/{id}` | ❌ | ✅ | ✅ |
+| `GET /api/tapes/sequence/{sequenceNumber}` | ❌ | ✅ | ✅ |
+| `DELETE /api/tapes/admin/{id}` | ❌ | ❌ (403) | ✅ |
 
 ---
 
@@ -341,15 +361,18 @@ A ready-to-import collection is included: `cartage-tape-inventory.postman_collec
 
 1. Import it into Postman.
 2. It includes a collection variable `baseUrl` (defaults to `http://localhost:8080`) and `token` (auto-filled).
-3. Run **Auth → Register** or **Auth → Login** first — a test script automatically saves the returned JWT into the `token` variable, so every subsequent request picks it up via `Authorization: Bearer {{token}}`.
-4. For `Update Tape`, `Get Tape By ID`, and `Delete Tape`, replace `REPLACE_WITH_TAPE_ID` in the URL with a real id from a create/list response.
+3. Run **Auth → Login as Admin** first (uses the seeded default admin credentials) — a test script automatically saves the returned JWT into the `token` variable.
+4. Run **Auth → Register** while the admin token is active to create a new employee account.
+5. Run **Auth → Login** with that employee's credentials to get their own token for the rest of the requests.
+6. For `Update Tape`, `Get Tape By ID`, and `Delete Tape`, replace `REPLACE_WITH_TAPE_ID` in the URL with a real id from a create/list response.
 
 ---
 
 ## Notes for Frontend Integration
 
+- There is **no sign-up page** in this system. Only an `ADMIN` can create new accounts via `/api/auth/register`, so the frontend needs a "Create User" form available only inside an admin view — not a public registration form.
 - Tokens are stateless JWTs — store in memory or `httpOnly` cookie (avoid `localStorage` for production-grade security, though fine for a demo/internship project).
-- Call `GET /api/auth/me` right after login (or on app load if a token is already stored) to get the current user's name/email/role — use `role` to conditionally show admin-only UI like the delete button.
+- Call `GET /api/auth/me` right after login (or on app load if a token is already stored) to get the current user's name/email/role — use `role` to conditionally show admin-only UI like "Create User" and the delete button.
 - `createdBy`/`updatedBy` are always names, never emails or IDs — display them as-is.
 - Dates (`createdAt`, `updatedAt`) are ISO-8601 `LocalDateTime` strings with no timezone offset — treat as local server time.
 - Use the `search` query param for a single search box (matches sequence number, location, or remarks); use `location` only if you need a dedicated location filter separate from general search.

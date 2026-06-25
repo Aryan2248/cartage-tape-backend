@@ -7,7 +7,7 @@ import com.example.cartagetape.dto.UserResponse;
 
 public interface AuthService {
 
-    AuthResponse register(RegisterRequest request);
+    UserResponse register(RegisterRequest request);
 
     AuthResponse login(LoginRequest request);
 
