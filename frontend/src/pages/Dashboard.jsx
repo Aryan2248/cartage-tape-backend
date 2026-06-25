@@ -7,6 +7,7 @@ import AddTapeModal from "../components/AddTapeModal";
 import { updateTape } from "../api/tapeApi";
 import EditTapeModal from "../components/EditTapeModal";
 import { deleteTape } from "../api/tapeApi";
+import Navbar from "../components/Navbar";
 import { useAuth } from "../context/AuthContext";
 
 const Dashboard = () => {
@@ -83,9 +84,16 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-slate-100 p-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">
-          Cartage Tape Inventory
-        </h1>
+        <Navbar />
+        <div className="mb-6">
+  <h2 className="text-3xl font-bold">
+    Inventory Management
+  </h2>
+
+  <p className="text-gray-500">
+    Track and manage cartridge tapes across locations.
+  </p>
+</div>
         <div className="flex justify-between mb-6">
   <SearchBar
     value={search}
@@ -100,15 +108,27 @@ const Dashboard = () => {
 </button>
 </div>
 
-        <TapeTable
-  tapes={tapes}
-  role={user?.role}
-  onEdit={(tape) => {
-    setSelectedTape(tape);
-    setEditOpen(true);
-  }}
-  onDelete={handleDeleteTape}
-/>
+        {tapes.length === 0 ? (
+  <div className="bg-white rounded-xl p-12 text-center shadow">
+    <h3 className="text-xl font-semibold">
+      No tapes found
+    </h3>
+
+    <p className="text-gray-500 mt-2">
+      Create your first tape record.
+    </p>
+  </div>
+) : (
+  <TapeTable
+    tapes={tapes}
+    role={user?.role}
+    onEdit={(tape) => {
+      setSelectedTape(tape);
+      setEditOpen(true);
+    }}
+    onDelete={handleDeleteTape}
+  />
+)}
 
       </div>
       <AddTapeModal
